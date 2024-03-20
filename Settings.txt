@@ -1,0 +1,54 @@
+$ Settings "Dark flight and strewn field meteoroid"
+$ Fireball's folder name, string
+$ Asteroid_fragmentation
+$
+$ working path of the script, string
+$ C:/Users/Albino/Documents/MATLAB/Asteroid_2023CX1_fragmentation_model/
+$
+$ Atmospheric profile file name, string
+$ Atmospheric_profile.txt
+$
+$ Meteoroid kinetic energy, Mt
+$ 0.000036878
+$
+$ Mean density meteoroid, kg/m^3 
+$ 3000
+$
+$ Starting speed, m/s    
+$ 14016.4
+$
+$ Trajectory inclination at starting speed, degree
+$ 49.1530
+$
+$ Trajectory azimut at starting speed, degree (from north to east)
+$ 281.3867
+$
+$ Starting height above Earth surface, m 
+$ 100000
+$
+$ Latitude starting point, degree
+$ 49.9190
+$
+$ Longitude starting point, degree
+$ -0.1468
+$
+$ Mean elevation of the ground (estimated) on which the meteoroid falls, m 
+$ 60
+$
+$ Maximum integration time, s 
+$ 550
+$
+$ Asintotic drag coefficient (0.5 for a sphere)
+$ 0.58
+$
+$ Dimensionless spherical form factor (1.21). Hemispherical form factor = 1.919 (Baldwin & Sheaffer, JGR, 76, 1971) 
+$ 1.21 
+$
+$ Meteoroid mean strength (MPa)
+$ 5.0 
+$ 
+$ Fragment's mass (kg)
+$ 1.0
+$
+$ Reduced expansion radius factor (alias pancake factor), Exp-1 (adimensional)
+$ 3.5
