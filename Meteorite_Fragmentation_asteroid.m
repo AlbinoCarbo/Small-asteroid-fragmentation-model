@@ -1,6 +1,6 @@
-% Meteorite fragmentation for 2023 CX1 (SPECIAL EDITION WITH STRENGTH)
+% Meteoroid fragmentation for little asteroids (SPECIAL EDITION WITH STRENGTH AND WITHOUT PANCAKE)
 % Matlab script for the computation of an atmospheric meteoroid path in a 3D ECEF system
-% with main explosion, pancake phase end fragment fall. 
+% with main explosion and fragment fall. 
 % Input data with initial conditions are read from the Settings.txt file. It needs 
 % the atmospheric profile from the starting height to the ground.
 %
@@ -41,20 +41,20 @@
 % between two different altitudes of the atmospheric profile.
 %
 % Albino Carbognani, INAF-OAS
-% Version Feb 23, 2024
+% Version Sep 19, 2024
 
 clear all
 
 disp('                                                                       ')
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-disp('%                      METEORITE MODEL FOR 2023 CX1                   %')
+disp('%               METEORITE FALL MODEL FOR LITTLE ASTEROIDS             %')
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-disp('%                     PATH AND FRAGMENT COMPUTATION                   %')
+disp('%              ATMOSPHERIC PATH AND FRAGMENTS STREWN FIELD            %')
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp('                                                                       ')
 disp('                    by Albino Carbognani (INAF-OAS)                    ')
-disp('                              Feb 2024                                 ')
+disp('                              Sep 2024                                 ')
 disp('                                                                       ')
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp('   ')
@@ -70,30 +70,33 @@ wgs84 = wgs84Ellipsoid;
 disp('Read settings file')
 disp('   ')
 
-wholefile_set = fileread('.\Settings.txt');
+wholefile_set = fileread('.\Asteroid_2023CX1\Settings_2023CX1.txt');
 % Split of the Settings and initialization of the string variables
-set = regexp(wholefile_set,'\$+','split');
+set1 = regexp(wholefile_set,'\$+','split');
 
-fireball_name=strtrim(set{4});         % Fireball's folder name
-WP=strtrim(set{7});                    % Working path of the script
-ATMO=strtrim(set{10});                 % Atmospheric profile name
-E0=str2double(strtrim(set{13}));       % Meteoroid kinetic energy, Mt
-rho_M=str2double(strtrim(set{16}));    % Mean density meteoroid, kg/m^3
-V0=str2double(strtrim(set{19}));       % Starting speed, m/s
-I0=str2double(strtrim(set{22}));       % Trajectory inclination at starting speed, degrees
-A0=str2double(strtrim(set{25}));       % Trajectory azimut at starting speed, degrees
-Q0=str2double(strtrim(set{28}));       % Starting height above Earth surface, m
-LAT=str2double(strtrim(set{31}));      % Latitude starting point, degrees
-LONG=str2double(strtrim(set{34}));     % Longitude starting point, degrees
-Qfin=str2double(strtrim(set{37}));     % Mean elevation of the ground (estimated) on which the meteoroid falls, m
-T0=str2double(strtrim(set{40}));       % Maximum integration time, s
-Ga=str2double(strtrim(set{43}));       % Asintotic drag coefficient
-F=str2double(strtrim(set{46}));        % Dimensionless spherical form factor
-Strength=str2double(strtrim(set{49})); % Mean body strength (MPa)
-M1=str2double(strtrim(set{52}));       % Fragment's mass, kg
+fireball_results=strtrim(set1{4});      % Fireball's folder results
+working_path=strtrim(set1{7});          % Path of the atmospheric profile
+ATMO=strtrim(set1{10});                 % Atmospheric profile name
+E0=str2double(strtrim(set1{13}));       % Meteoroid kinetic energy, Mt
+rho_M=str2double(strtrim(set1{16}));    % Mean density meteoroid, kg/m^3
+V0=str2double(strtrim(set1{19}));       % Starting speed, m/s
+I0=str2double(strtrim(set1{22}));       % Trajectory inclination at starting speed, degrees
+A0=str2double(strtrim(set1{25}));       % Trajectory azimut at starting speed, degrees
+Q0=str2double(strtrim(set1{28}));       % Starting height above Earth surface, m
+LAT=str2double(strtrim(set1{31}));      % Latitude starting point, degrees
+LONG=str2double(strtrim(set1{34}));     % Longitude starting point, degrees
+Qfin=str2double(strtrim(set1{37}));     % Mean elevation of the ground (estimated) on which the meteoroid falls, m
+T0=str2double(strtrim(set1{40}));       % Maximum integration time, s
+Ga=str2double(strtrim(set1{43}));       % Asintotic drag coefficient
+F=str2double(strtrim(set1{46}));        % Dimensionless spherical form factor
+Strength=str2double(strtrim(set1{49})); % Mean body strength (MPa)
+M1=str2num(strtrim(set1{52}));          % Final fragments mass, kg
+f=str2double(strtrim(set1{55}));        % Fragments mass correction factor (to compensate ablation)
+fireball_name=strtrim(set1{58});        % Fireball's name
+LE=str2double(strtrim(set1{61}));       % Luminous Efficiency (adimensional)
 
-% Copy the current settings file in the current fireball's folder
-copyfile("Settings.txt", fireball_name)
+% Fragments starting mass, kg
+M1=M1/f;
 
 % Compute meteoroid starting mass, kg
 M0=2*E0*(4.1840e+15)/(V0^2);
@@ -111,52 +114,63 @@ disp('Save meteoroid data for ODEsystem.m script')
 disp('   ')
 
 % Save data in "meteoroid_data.txt", file that will be read by ODEsystem.m,
-% EventsFunction.m and EventsFunction_L.m
+% and EventsFunction.m 
 fid0 = fopen('meteoroid_data.txt','w');
-fprintf(fid0,'%10.3f \t %10.3f \t %10.3f \t %10.3f \t %10.3f\n', F, Ga, rho_M, Strength, R0);   
+fprintf(fid0,'%10.5f \t %10.5f \t %10.5f \t %10.5f \t %10.5f\n', F, Ga, rho_M, Strength, R0);   
 fclose(fid0);
 
 % Copy the current meteoroid file in the current fireball's folder
-copyfile("meteoroid_data.txt", fireball_name)
+copyfile("meteoroid_data.txt", fireball_results)
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Define path and atmospheric data %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Path of the atmospheric data file %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-disp('Define working path and atmospheric data location')
+disp('Atmospheric data file')
 disp('   ')
-
-working_path=strcat(WP, fireball_name);  
-atmospheric_profile=strcat(working_path, '/', ATMO);
+ 
+atmospheric_profile=strcat(working_path, ATMO);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Open the output model file %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-fid1 = fopen(strcat(working_path, '/Asteroid_model.txt'),'w'); 
+fid1 = fopen(strcat(fireball_results, 'Asteroid_model.txt'),'w'); 
 fprintf(fid1, '%%    \n');
-fprintf(fid1, '%% 2023 CX1 SINGLE BODY MODEL \n');
+fprintf(fid1, strcat('%%', " ", fireball_name," ", 'FRAGMENTATION WITH NO PANCAKE PHASE \n'));
 fprintf(fid1, '%%    \n');
-fprintf(fid1, '%% Fireball name                            %s \n', '2023 CX1');
 fprintf(fid1, '%% Starting Mass (kg)                       %10.2f \n', M0);
 fprintf(fid1, '%% Diameter (m)                             %10.2f \n', 2*R0);
-fprintf(fid1, '%% Mean density (kg/m^3)                    %10.0f \n', rho_M);
+fprintf(fid1, '%% Mean density (kg/m^3)                    %10.2f \n', rho_M);
 fprintf(fid1, '%% M/A (kg/m^2)                             %10.2f \n', M0/S0);
 fprintf(fid1, '%% Asintotic drag coefficient               %10.2f \n', Ga);
 fprintf(fid1, '%% Starting speed (km/s)                    %10.2f \n', V0/1000);
 fprintf(fid1, '%% Starting inclination (degree)            %10.2f \n', I0);
 fprintf(fid1, '%% Starting height (km)                     %10.2f \n', Q0/1000);
 fprintf(fid1, '%% Starting strength (MPa)                  %10.2f \n', Strength);
+fprintf(fid1, '%% Fragments Mass (kg)                      %10.2f \n', M1(1));
+for J=2:length(M1)
+fprintf(fid1, '%%                                          %10.3f \n', M1(J));
+end
 fprintf(fid1, '    \n');
 fprintf(fid1, '%% Height (km)     Speed (km/s)       Lat (degrees)     Long (degrees)    Dynamic pressure (MPa)    Relative mass    Diameter (m)   Time (s)\n');
 fprintf(fid1, '    \n');
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Open the strewn field file %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+fid5 = fopen(strcat(fireball_results, 'Asteroid_strewn_field.txt'),'w');
+fprintf(fid5, strcat('%%', " ", fireball_name," ", 'FRAGMENTATION WITH NO PANCAKE PHASE \n'));
+fprintf(fid5, '%% Starting strength (MPa)                  %10.2f \n', Strength);
+fprintf(fid5, '    \n');
+fprintf(fid5, '%%  Lat (degrees)     Long (degrees)    Mass (kg)\n');
+fprintf(fid5, '    \n');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Compute and save "atmospheric_data.txt" from ATMO %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-string1=strcat('Compute and save ECEF atmospheric data from', " ", ATMO);
+string1=strcat('Compute and save ECEF atmospheric data');
 disp(string1)
 disp('   ')
 
@@ -178,14 +192,14 @@ Vw_east=ugr;                                % Wind speed east component, m/s
 % Save atmospheric ECEF profile in current "atmospheric_data.txt", file that will be read by ODEsystem.m
 fid2 = fopen('atmospheric_data.txt','w');
 for i=1:length(quota_vento)
-fprintf(fid2,'%10.3f \t %10.3f \t %10.6f  %10.3f  %10.3f \t %10.3f\n', quota_vento(i), temp(i), density(i), VX(i), VY(i), VZ(i)); 
+fprintf(fid2,'%10.5f \t %10.5f \t %10.6f  %10.5f  %10.5f \t %10.5f\n', quota_vento(i), temp(i), density(i), VX(i), VY(i), VZ(i)); 
 end
 
 % Close the file atmospheric_profile.txt
 fclose(fid2);
 
 % Copy the current atmospheric data file in the current fireball's folder
-copyfile("atmospheric_data.txt", fireball_name)
+copyfile("atmospheric_data.txt", fireball_results)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Compute meteoroid starting speed in ECEF reference system %
@@ -234,72 +248,60 @@ opt = odeset('Events',@EventsFunction); % Condition to exit the integration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 disp('Extract physical solution until main fragmentation')
 disp('   ')
-[N, quota_meteoroide, speed, lat, long, height, Dynamic_pressure, residual_mass, diameter]=physical_solution2(working_path, Qfin, M0, y, t);
+[N, quota_meteoroide, speed, lat, long, height, Dynamic_pressure, residual_mass, diameter]=physical_solution2(fireball_results, Qfin, M0, y, t);
 t=t(1:N);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Numerical integration for lateral expansion (pancake phase) %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp('Integrate motion equations lateral expansion (pancake phase)')
-disp('   ')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Numerical integration for all fragments  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-VXL=y(N,1);
-VYL=y(N,2);
-VZL=y(N,3);
-XL=y(N,4);
-YL=y(N,5);
-ZL=y(N,6);
+% Starting position and speed for fragments
+VX1=y(N,1);
+VY1=y(N,2);
+VZ1=y(N,3);
+X1=y(N,4);
+Y1=y(N,5);
+Z1=y(N,6);
 
-yL=[VXL VYL VZL XL YL ZL M0*residual_mass(N) 0];
+for J=1:length(M1)
 
-% Runge-Kutta 4th/5th order ODE solver
-optL = odeset('Events',@EventsFunction_L); % Condition to exit the integration
-[t_lat, y_lat]=ode45(@ODEsystem_L, tspan, yL, optL);
+disp(strcat('Integrate motion equations of the fragment n.', num2str(J)))
+disp('   ')    
+    
+% Output file with single fragment's path 
+fid4 = fopen(strcat(fireball_results, 'Asteroid_fragment_n', num2str(J), '.txt'),'w'); 
+fprintf(fid4, '%%    \n');
+fprintf(fid4, strcat('%%', " ", fireball_name," ", 'FRAGMENTATION WITH NO PANCAKE PHASE \n'));
+fprintf(fid4, '%% Starting strength (MPa)                  %10.2f \n', Strength);
+fprintf(fid4, '%% Starting Mass (kg)                       %10.3f \n', M1(J));
 
-[NL, quota_meteoroideL, speedL, latL, longL, heightL, Dynamic_pressureL, residual_massL, diameterL]=physical_solution_L(working_path, Qfin, M0, y_lat, t_lat+t(N));
-t_lat=t_lat(1:NL);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Numerical integration for fragment path %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp('Integrate fragment''s motion equations ')
-disp('   ')
-
-D1=2*(3*M1/(4*pi*rho_M))^(1/3);  % Fragment's diameter, m
-Strength1=Strength*(M0/M1)^0.20; % Fragment's strength with alpha=0.2, MPa (Weibull's law)
+% Compute fragment's diameter and strength
+D1=2*(3*M1(J)/(4*pi*rho_M))^(1/3);  % Fragment's diameter, m
+Strength1=Strength*(M0/M1(J))^0.20; % Fragment's strength with alpha=0.2, MPa (Weibull's law)
 
 % Superior limit to fragment's strength (MPa)
 if Strength1 > 100
     Strength1=100;
 end
 
-VX1=y_lat(NL,1);
-VY1=y_lat(NL,2);
-VZ1=y_lat(NL,3);
-X1=y_lat(NL,4);
-Y1=y_lat(NL,5);
-Z1=y_lat(NL,6);
-
-y1=[VX1 VY1 VZ1 X1 Y1 Z1 M1];
+y1=[VX1 VY1 VZ1 X1 Y1 Z1 M1(J)];
 
 fid0 = fopen('meteoroid_data.txt','w');
-fprintf(fid0,'%10.3f \t %10.3f \t %10.3f \t %10.3f \t %10.3f\n', F, Ga, rho_M, Strength1, D1);   
+fprintf(fid0,'%10.5f \t %10.5f \t %10.5f \t %10.5f \t %10.5f\n', F, Ga, rho_M, Strength1, D1);   
 fclose(fid0);
 
 % Runge-Kutta 4th/5th order ODE solver
 opt = odeset('Events',@EventsFunction);
 [t2, y2]=ode45(@ODEsystem, tspan, y1, opt);
 
-[N2, quota_meteoroide2, speed2, lat2, long2, height2, Dynamic_pressure2, residual_mass2, diameter2]=physical_solution(working_path, Qfin, M0, y2, t2+t_lat(NL)+t(N));
+[N2, quota_meteoroide2, speed2, lat2, long2, height2, Dynamic_pressure2, residual_mass2, diameter2]=physical_solution(fireball_results, Qfin, M0, y2, t2+t(N), J);
 
 fclose(fid1);
 
-%%%%%%%%%%%%%%%%
-% Plot results %
-%%%%%%%%%%%%%%%%
+end
 
 % Load model whole data
-model_data=strcat(working_path, '/Asteroid_model.txt');
+model_data=strcat(fireball_results, '/Asteroid_model.txt');
 s1=model_data;
 Dat1(:,:)=load(s1, '-ascii');
 
@@ -313,266 +315,324 @@ Diameter_tot=Dat1(:,7);         % m
 Time_tot=Dat1(:,8);             % s
 N_tot=length(Time_tot);
 
-% Compute energy deposition, Mt/km
-% Kinetic energy, Mt
-K=(0.5*M0*Relative_mass_tot.*(1000*Speed_tot).^2)/(4.184*10^15); 
-dK=gradient(K); % Mt
-dHeight=gradient(Height_tot); % km
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compute energy deposition in atmosphere %
+% and fireball's absolute magnitude       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Energy_dep=abs(dK./dHeight); % Mt/km
+% % Salvataggio dei valori dell'energy deposition e della magnitudine assoluta in un file di output
+% fid3 = fopen(strcat(fireball_results, 'Asteroid_energy_deposition_absolute_mag.txt'),'w');
+% fprintf(fid3, strcat('%%', " ", fireball_name," ", 'METEOROID FRAGMENTATION WITH NO PANCAKE MODEL \n'));
+% fprintf(fid3, '%% Starting Mass (kg)                       %10.2f \n', M0);
+% fprintf(fid3, '%% Diameter (m)                             %10.2f \n', 2*R0);
+% fprintf(fid3, '%% Mean density (kg/m^3)                    %10.2f \n', rho_M);
+% fprintf(fid3, '%% M/A (kg/m^2)                             %10.2f \n', M0/S0);
+% fprintf(fid3, '%% Asintotic drag coefficient               %10.2f \n', Ga);
+% fprintf(fid3, '%% Starting speed (km/s)                    %10.2f \n', V0/1000);
+% fprintf(fid3, '%% Starting inclination (degree)            %10.2f \n', I0);
+% fprintf(fid3, '%% Starting height (km)                     %10.2f \n', Q0/1000);
+% fprintf(fid3, '%% Starting strength (MPa)                  %10.2f \n', Strength);
+% fprintf(fid3, '%% Luminous Efficiency                      %10.2f \n', LE);
+% fprintf(fid3, '%%    \n');
+% fprintf(fid3, '%% Height (km)     Energy dep (kt/km)       Absolute mag     Time (s)\n');
+% fprintf(fid3, '    \n');
+% 
+% % Original body energy deposition
+% [Energy_dep_main, Height_main, Time_main, Power_main]=energy_deposition(Time_tot(1:1:N), Speed_tot(1:1:N), Height_tot(1:1:N), Relative_mass_tot(1:1:N), M0);
+% 
+% % Efficienza luminosa fissa e pari alla frazione LE della perdita di energia cinetica
+% % 1500 W è la costante di normalizzazione per la mag assoluta pari a zero.
+% MAG_main=-2.5*log10(LE*Power_main/1500);
+% 
+% for i=1:length(Time_main)
+%      fprintf(fid3,'%10.6f \t  %10.6f\t\t %10.6f  \t\t %10.6f \n', Height_main(i), Energy_dep_main(i), MAG_main(i), Time_main(i)); 
+% end
+% 
+% % Fragments energy deposition
+% Energy_dep_frag_tot=0;
+% Power_tot_frag=0;
+% % Select minimum array length between fragments
+% s0=strcat(fireball_results,'Asteroid_fragment_n', '1', '.txt');
+% Dat_frag=load(s0, '-ascii');
+% Time_frag=Dat_frag(:,8);   
+% MM=length(Time_frag); % Minimum array length
+% 
+% for J=1:length(M1)
+%     s0=strcat(fireball_results,'Asteroid_fragment_n', num2str(J), '.txt');
+%     Dat_frag=load(s0, '-ascii');
+%     Time_frag=Dat_frag(:,8);   % s
+%     Speed_frag=Dat_frag(:,2);  % km/s
+%     Height_frag=Dat_frag(:,1); % km
+%     Relative_mass_frag=Dat_frag(:,6);
+%     [Energy_dep_frag, Height_frag, Time_frag1, Power_frag]=energy_deposition(Time_frag(2:1:MM), Speed_frag(2:1:MM), Height_frag(2:1:MM), Relative_mass_frag(2:1:MM), M0);
+%     Energy_dep_frag_tot=Energy_dep_frag_tot+Energy_dep_frag;
+%     Power_tot_frag=Power_tot_frag+Power_frag;
+% end
+% 
+% % Efficienza luminosa fissa e pari alla frazione LE della perdita di energia cinetica
+% % 1500 W è la costante di normalizzazione per la mag assoluta pari a zero.
+% MAG_frag=-2.5*log10(LE*Power_frag/1500); 
+% 
+% % MAG2=MAG(ix:1:end);
+% % Time_tot2=Time_tot1(ix:1:end);
+%   
+% for i=1:length(Time_frag1)
+%      fprintf(fid3,'%10.6f \t  %10.6f\t\t %10.6f  \t\t %10.6f \n', Height_frag(i), Energy_dep_frag_tot(i), MAG_frag(i), Time_frag1(i)); 
+% end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Save Google Earth files, atmospheric path, dark flight and strewn field %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%
+% Plot model results %
+%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%
 
-disp('Save atmospheric path in .kml files for Google Earth')
-disp('   ')
-
-% Syntax: kmlwriteline(filename,latitude,longitude)
-% kmlwriteline(filename,latitude,longitude,altitude)
-iconFilename1 = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle_highlight.png';
-iconFilename2 = 'http://maps.google.com/mapfiles/kml/shapes/star.png';
-iconFilename3 = 'http://maps.google.com/mapfiles/kml/paddle/ylw-blank-lv.png';
-iconFilename4 = 'https://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png';
-% Array of white characters to not show the name near the icons in the kml file
-Name_blank = blanks(length(Lat_tot));
-filename1 = strcat(working_path, '/', '2023CX1_atmospheric_path_', num2str(M1), 'kg_', num2str(Strength), 'MPa', '.kml');
-kmlwritepoint(filename1, Lat_tot(1:10:length(Lat_tot))', Long_tot(1:10:length(Long_tot))', 1000*Height_tot(1:10:length(Height_tot))', 'Icon', iconFilename1, 'IconScale', 1, 'Name', Name_blank);
-
-% Reads filename1 and adds the line that reaches the ground into the trajectory kml file
-filename2 = [working_path '/','2023CX1_atmospheric_path_and_height_', num2str(M1), 'kg_', num2str(Strength), 'MPa','.kml'];
-fidi=fopen(filename1,'r');
-fido=fopen(filename2,'w');
-while ~feof(fidi)
-  l=fgetl(fidi);           % read line
-  if strfind(l,'</Point>') % Stringa da sostituire
-    % modify line here
-    l='<extrude>1</extrude></Point>';
-  end
-  fprintf(fido,'%s',l);  % 'fgetl returns \n so it's embedded
-end
-fidi=fclose(fidi);
-fido=fclose(fido);
-
-% Save strewn field data for Google Earth
-filename3 = strcat(working_path, '/', '2023CX1_strewn_field_', num2str(M1), 'kg_', num2str(Strength), 'MPa.kml');
-Name_strewn=strcat('2023CX1,', " ",'Lat'," ", num2str(Lat_tot(length(Lat_tot))),", ", 'Long'," ", num2str(Long_tot(length(Long_tot))), " ", num2str(M1), 'kg'," ", '(', num2str(Strength), 'MPa)'); 
-kmlwritepoint(filename3, Lat_tot(length(Lat_tot)), Long_tot(length(Long_tot)), 'Icon', iconFilename4, 'IconScale', 1.5, 'Name', Name_strewn);
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-% End Google Earth files %
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-disp('Plot and save 2023 CX1 model results')
+disp(strcat('Plot and save', " ", fireball_name," ", 'model results'))
 disp('   ')
 
 % Compute distance range from starting point, km
 [arc,az] = distance(LAT, LONG, Lat_tot, Long_tot);
 range_tot=111.19*arc;
 
-figure
+%========================================================================
+
+figure % Plot generale del modello
 
 % Up figure
 
-subplot(2,4,1)
+subplot(2,3,1)
 % Speed vs time
-plot(Time_tot, Speed_tot, 'k.', 'MarkerSize', 10)
+semilogy(Time_tot, Speed_tot, 'k.', 'MarkerSize', 5)
 hold on
-plot(Time_tot(N), Speed_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-hold on
-plot(Time_tot(N+NL), Speed_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
+semilogy(Time_tot(N), Speed_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
+legend("On air", "Fragmentation",'interpreter','latex')
 title('Speed vs time', 'FontSize',14) 
 xlabel('Time (s)','FontSize',14)
-ylabel('Velocity (km/s)','Fontsize',14)
+ylabel('Speed (km/s)','Fontsize',14)
 hold off
 
-subplot(2,4,2)
-% Residual mass vs time
-plot(Time_tot, Relative_mass_tot, 'k.', 'MarkerSize', 10)
+subplot(2,3,2)
+% Speed vs height
+loglog(Speed_tot, Height_tot, 'k.', 'MarkerSize', 5)
 hold on
-plot(Time_tot(N), Relative_mass_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-hold on
-plot(Time_tot(N+NL), Relative_mass_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-hold on
+loglog(Speed_tot(N), Height_tot (N), 'r.', 'MarkerSize', 30) % Start fragmentation
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
-title('Mass vs time', 'FontSize',14)
-xlabel('Time (s)','FontSize',14)
-ylabel('Relative mass','Fontsize',14)
+legend("On air", "Fragmentation",'interpreter','latex')
+title('Speed vs height', 'FontSize',14) 
+xlabel('Speed (km/s)','FontSize',14)
+ylabel('Height (km)','Fontsize',14)
 hold off
 
-subplot(2,4,3)
+
+subplot(2,3,3)
 % Height vs time
-plot(Time_tot, Height_tot, 'k.', 'MarkerSize', 10)
+semilogx(Time_tot, Height_tot, 'k.', 'MarkerSize', 5)
 hold on
-plot(Time_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-hold on
-plot(Time_tot(N+NL), Height_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
+semilogx(Time_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
+legend("On air", "Fragmentation",'interpreter','latex')
 title('Height vs time', 'FontSize',14)
 xlabel('Time (s)','FontSize',14)
 ylabel('Height (km)','Fontsize',14)
 hold off
 
-subplot(2,4,4)
-% Diameter vs time
-plot(Time_tot, Diameter_tot, 'k.', 'MarkerSize', 10)
-hold on
-plot(Time_tot(N), Diameter_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-hold on
-plot(Time_tot(N+NL), Diameter_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
-title('Diameter vs time', 'FontSize',14)
-xlabel('Time (s)','FontSize',14)
-ylabel('Diameter (m)','Fontsize',14)
-hold off
 
 % Down figure
 
-subplot(2,4,5)
+subplot(2,3,4)
 % Dynamic pressure vs height
-plot(Height_tot, Dynamic_pressure_tot, 'k.', 'MarkerSize', 10)
+plot(Height_tot, Dynamic_pressure_tot, 'k.', 'MarkerSize', 5)
 hold on
 plot(Height_tot(N), Dynamic_pressure_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
 hold on
-plot(Height_tot(N+NL), Dynamic_pressure_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-hold on
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
+legend("On air", "Fragmentation",'interpreter','latex')
 title('Dynamic pressure vs height', 'FontSize',14)
 xlabel('Height (km)','FontSize',14)
 ylabel('Dynamic pressure (MPa)','Fontsize',14)
 hold off
 
-subplot(2,4,6)
+subplot(2,3,5)
 % Height vs range
-plot(range_tot, Height_tot, 'k.', 'MarkerSize', 10)
+axis equal
+plot(range_tot, Height_tot, 'k.', 'MarkerSize', 5)
 hold on
 plot(range_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
 hold on
-plot(range_tot(N+NL), Height_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-hold on
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
+legend("On air", "Fragmentation",'interpreter','latex')
 title('Height vs range', 'FontSize',14)
 xlabel('Range (km)','FontSize',14)
 ylabel('Height (km)','Fontsize',14)
 hold off
 
-subplot(2,4,7)
-% % Path latitude vs longitude
-% plot(Long_tot, Lat_tot, 'k.', 'MarkerSize', 10)
-% hold on
-% plot(Long_tot(N), Lat_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-% hold on
-% plot(Long_tot(N+NL), Lat_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-% grid
-% legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
-% title('Path on the ground', 'FontSize',14)
-% xlabel('Long (deg)','FontSize',14)
-% ylabel('Lat (deg)','Fontsize',14)
-% hold off
-
-% Height vs energy deposition
-%semilogx(Energy_dep, Height_tot, '--', 'MarkerSize', 10)
-plot(Energy_dep, Height_tot, '--', 'MarkerSize', 10)
-hold on
-grid
-title('Height vs energy deposition', 'FontSize',14)
-xlabel('Energy deposition (Mt/km)','FontSize',14)
-ylabel('Height (km)','Fontsize',14)
-hold off
-
-
-subplot(2,4,8)
+subplot(2,3,6)
 % Dynamic pressure vs speed
-plot(Speed_tot, Dynamic_pressure_tot, 'k.', 'MarkerSize', 10)
+plot(Speed_tot, Dynamic_pressure_tot, 'k.', 'MarkerSize', 5)
 hold on
 plot(Speed_tot(N), Dynamic_pressure_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
 hold on
-plot(Speed_tot(N+NL), Dynamic_pressure_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-hold on
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
+legend("On air", "Fragmentation",'interpreter','latex')
 title('Dynamic pressure vs speed', 'FontSize',14)
 xlabel('Speed (km/s)','FontSize',14)
 ylabel('Dynamic pressure (MPa)','Fontsize',14)
 hold off
 
-suptitle('Asteroid fall model')
+suptitle('Asteroid fall model with meteoroid disintegration')
 
 hold off
 
-cd(working_path)
-file_output=strcat('Asteroid_model_', num2str(M1), 'kg_', num2str(Strength), 'MPa','.fig');
+file_output=strcat(fireball_results,'Asteroid_model_',fireball_name, '_', num2str(Strength), 'MPa','.fig');
 saveas(gcf, file_output, 'fig')   % Save the figure in .fig format
-cd(WP)
 
-figure % Per il paper
+%========================================================================
+
+figure % Figure of the paper
+
+% Compute local minimum of the total height.
+% Each minimum correspond to a meteorite on the ground.
+TF1 = islocalmin(Height_tot,'FlatSelection','first');
+IN = find(TF1==1);
+IN(end+1) = length(Height_tot); % Add last minimum
+
+% Restore final mass value to plot in the graph
+M1=f*M1;
+nn=1;
 
 subplot(2,2,1)
-% Speed vs time
-plot(Time_tot, Speed_tot, 'k.', 'MarkerSize', 10)
+% Height vs range
+axis equal
+plot(range_tot(1:1:N), Height_tot(1:1:N), 'k-', 'LineWidth', 2, 'DisplayName', sprintf('Original mass'))
 hold on
-plot(Time_tot(N), Speed_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-hold on
-plot(Time_tot(N+NL), Speed_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
+plot(range_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30, 'DisplayName', sprintf('Fragmentation')) % Start fragmentation
+plot(range_tot(N:IN(1)), Height_tot(N:IN(1)), '-', 'LineWidth', 2, 'DisplayName', sprintf(strcat('Final mass'," ", num2str(M1(1)), 'kg'))) % Plot first meteorite
+for J=1:length(M1)-1 % plot of subsequent meteorites
+    plot(range_tot(IN(J)+nn:IN(J+1)-nn), Height_tot(IN(J)+nn:IN(J+1)-nn), '-', 'LineWidth', 2, 'DisplayName', sprintf(strcat('Final mass'," ", num2str(M1(J+1)), 'kg')))
+end
+plot(range_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30, 'HandleVisibility','off') % Start fragmentation
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
-title('Speed vs time', 'FontSize',14) 
-xlabel('Time (s)','FontSize',14)
-ylabel('Velocity (km/s)','Fontsize',14)
+axis equal
+legend('-DynamicLegend');
+legend('show');
+ax = gca;
+ax.FontSize = 10;  % Font Size of 10
+ylim([0 Height_tot(N)+5])
+%title('Height vs range', 'FontSize',14)
+xlabel('Range (km)','FontSize',20)
+ylabel('Height (km)','Fontsize',20)
 hold off
 
+
 subplot(2,2,2)
-% Height vs range
-plot(range_tot, Height_tot, 'k.', 'MarkerSize', 10)
+% Height vs speed
+semilogx(Speed_tot(1:1:N), Height_tot(1:1:N),  'k-', 'LineWidth', 2, 'DisplayName', sprintf('Original mass'))
 hold on
-plot(range_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-hold on
-plot(range_tot(N+NL), Height_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-hold on
+semilogx(Speed_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30, 'DisplayName', sprintf('Fragmentation')) % Start fragmentation
+semilogx(Speed_tot(N:IN(1)), Height_tot(N:IN(1)), '-', 'LineWidth', 2, 'DisplayName', sprintf(strcat('Final mass'," ", num2str(M1(1)), 'kg'))) % Plot first meteorite
+for J=1:length(M1)-1 % plot of subsequent meteorites
+    semilogx(Speed_tot(IN(J)+nn:IN(J+1)-nn), Height_tot(IN(J)+nn:IN(J+1)-nn), '-', 'LineWidth', 2, 'DisplayName', sprintf(strcat('Final mass'," ", num2str(M1(J+1)), 'kg')))
+end
+semilogx(Speed_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30, 'HandleVisibility','off') % Start fragmentation
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
-title('Height vs range', 'FontSize',14)
-xlabel('Range (km)','FontSize',14)
-ylabel('Height (km)','Fontsize',14)
+%legend('-DynamicLegend');
+%legend('show');
+ax = gca;
+ax.FontSize = 10;  % Font Size of 10
+%title('Height vs speed', 'FontSize',14)
+ylim([0 Height_tot(N)+5])
+xlabel('Speed (km/s)','FontSize',20)
+ylabel('Height (km)','Fontsize',20)
 hold off
+
 
 subplot(2,2,3)
 % Dynamic pressure vs height
-plot(Height_tot, Dynamic_pressure_tot, 'k.', 'MarkerSize', 10)
+semilogx(Dynamic_pressure_tot(1:1:N), Height_tot(1:1:N), 'k-', 'LineWidth', 2, 'DisplayName', sprintf('Original mass'))
 hold on
-plot(Height_tot(N), Dynamic_pressure_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-hold on
-plot(Height_tot(N+NL), Dynamic_pressure_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-hold on
+semilogx(Dynamic_pressure_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30, 'DisplayName', sprintf('Fragmentation')) % Start fragmentation
+semilogx(Dynamic_pressure_tot(N:IN(1)), Height_tot(N:IN(1)), '-', 'LineWidth', 2, 'DisplayName', sprintf(strcat('Final mass'," ", num2str(M1(1)), 'kg'))) % Plot first meteorite
+for J=1:length(M1)-1 % plot of subsequent meteorites
+    semilogx(Dynamic_pressure_tot(IN(J)+nn:IN(J+1)-nn), Height_tot(IN(J)+nn:IN(J+1)-nn), '-', 'LineWidth', 2, 'DisplayName', sprintf(strcat('Final mass'," ", num2str(M1(J+1)), 'kg')))
+end
+semilogx(Dynamic_pressure_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30, 'HandleVisibility','off') % Start fragmentation
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
-title('Dynamic pressure vs height', 'FontSize',14)
-xlabel('Height (km)','FontSize',14)
-ylabel('Dynamic pressure (MPa)','Fontsize',14)
+%legend('-DynamicLegend');
+%legend('show');
+ax = gca;
+ax.FontSize = 10;  % Font Size of 10
+ylim([0 Height_tot(N)+5])
+%title('Height vs Dynamic pressure', 'FontSize',14)
+xlabel('Dynamic pressure (MPa)','FontSize',20)
+ylabel('Height (km)','Fontsize',20)
 hold off
+
 
 subplot(2,2,4)
-% Dynamic pressure vs speed
-plot(Speed_tot, Dynamic_pressure_tot, 'k.', 'MarkerSize', 10)
+% Height vs mass
+semilogx(M0*Relative_mass_tot(1:1:N), Height_tot(1:1:N), 'k-', 'LineWidth', 2, 'DisplayName', sprintf('Original mass'))
 hold on
-plot(Speed_tot(N), Dynamic_pressure_tot(N), 'r.', 'MarkerSize', 30) % Start fragmentation
-hold on
-plot(Speed_tot(N+NL), Dynamic_pressure_tot(N+NL), 'g*', 'MarkerSize', 20) % End pancake phase
-hold on
+semilogx(M0*Relative_mass_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30, 'DisplayName', sprintf('Fragmentation')) % Start fragmentation
+semilogx(M0*Relative_mass_tot(N:IN(1)), Height_tot(N:IN(1)), '-', 'LineWidth', 2, 'DisplayName', sprintf(strcat('Final mass'," ", num2str(M1(1)), 'kg'))) % Plot first meteorite
+for J=1:length(M1)-1 % plot of subsequent meteorites
+    semilogx(M0*Relative_mass_tot(IN(J)+nn:IN(J+1)-nn), Height_tot(IN(J)+nn:IN(J+1)-nn), '-', 'LineWidth', 2, 'DisplayName', sprintf(strcat('Final mass'," ", num2str(M1(J+1)), 'kg')))
+end
+semilogx(M0*Relative_mass_tot(N), Height_tot(N), 'r.', 'MarkerSize', 30, 'HandleVisibility','off') % Start fragmentation
 grid
-legend("On air", "Start fragmentation","Airburst",'interpreter','latex')
-title('Dynamic pressure vs speed', 'FontSize',14)
-xlabel('Speed (km/s)','FontSize',14)
-ylabel('Dynamic pressure (MPa)','Fontsize',14)
+%legend('-DynamicLegend');
+%legend('show');
+ax = gca;
+ax.FontSize = 10;  % Font Size of 10
+ylim([0 Height_tot(N)+5])
+%title('Height vs mass', 'FontSize',14)
+xlabel('Mass (kg)','FontSize',20)
+ylabel('Height (km)','Fontsize',20)
 hold off
 
-disp('End 2023 CX1 model computation')
+file_output1=strcat(fireball_results,'Asteroid_model_for_paper_',fireball_name, '_', num2str(Strength), 'MPa','.fig');
+saveas(gcf, file_output1, 'fig')   % Save the figure in .fig format
+
+%========================================================================
+
+% Figure for the paper
+% 
+% % Load energy data from file
+% model_data1=strcat(fireball_results, '/Asteroid_energy_deposition_absolute_mag.txt');
+% s2=model_data1;
+% Dat2(:,:)=load(s2, '-ascii');
+% 
+% Height_energy=Dat2(:,1);     % km     
+% Energy_dep_tot=Dat2(:,2);    % kt/km       
+% Absolute_mag_tot=Dat2(:,3);  % mag 
+% Time_energy=Dat2(:,4);       % s    
+% 
+% subplot(1,2,1)
+% 
+% % Absolute mag vs time
+% semilogx(Time_energy, Absolute_mag_tot, 'k.', 'MarkerSize', 5)
+% hold on
+% set(gca,'Ydir','reverse')
+% hold on
+% grid
+% title('Absolute mag vs time', 'FontSize',14)
+% xlabel('Time (s)','FontSize',14)
+% ylabel('Absolute mag','Fontsize',14)
+% hold off
+% 
+% subplot(1,2,2)
+% 
+% % Height vs energy deposition
+% semilogx(Energy_dep_tot, Height_energy, 'k.', 'MarkerSize', 5)
+% hold on
+% grid
+% axis([Energy_dep_tot(1) max(Energy_dep_tot) 10 75])
+% title('Height vs energy deposition', 'FontSize',14)
+% xlabel('Energy deposition (kt/km)','FontSize',14)
+% ylabel('Height (km)','Fontsize',14)
+% hold off
+
+%========================================================================
+
+disp(strcat('End'," ", fireball_name," ", 'model computation'))
 disp('   ')
+fclose('all');

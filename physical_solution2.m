@@ -142,7 +142,7 @@ end
 fid1 = fopen(strcat(working_path, '/Asteroid_model.txt'),'a+');
 % Salvataggio dei valori del modello nel file di output
 for i=1:N
-     fprintf(fid1,'%10.6f \t  %10.6f\t\t %10.4f  \t\t %10.4f \t\t %10.3f \t\t %10.7f \t\t %10.7f \t\t %10.7f\n', height(i)/1000, speed(i)/1000, lat(i), long(i), Dynamic_pressure(i), residual_mass(i), diameter(i), t(i)); 
+     fprintf(fid1,'%10.6f \t  %10.6f\t\t %10.6f  \t\t %10.6f \t\t %10.6f \t\t %10.7f \t\t %10.7f \t\t %10.7f\n', height(i)/1000, speed(i)/1000, lat(i), long(i), Dynamic_pressure(i), residual_mass(i), diameter(i), t(i)); 
 end
 
 end

@@ -6,7 +6,7 @@ $ working path of the script, string
 $ C:/Users/Albino/Documents/MATLAB/Asteroid_2023CX1_fragmentation_model/
 $
 $ Atmospheric profile file name, string
-$ Atmospheric_profile.txt
+$ Atmospheric_profile_Herstmonceux.txt
 $
 $ Meteoroid kinetic energy, Mt
 $ 0.000036878
@@ -45,10 +45,17 @@ $ Dimensionless spherical form factor (1.21). Hemispherical form factor = 1.919 
 $ 1.21 
 $
 $ Meteoroid mean strength (MPa)
-$ 5.0 
+$ 1.0 
 $ 
 $ Fragment's mass (kg)
-$ 1.0
+$ 0.003
 $
 $ Reduced expansion radius factor (alias pancake factor), Exp-1 (adimensional)
 $ 3.5
+$
+$ Fireball's name
+$ 2023CX1
+$
+$ Luminous Efficiency
+$ 0.05
+$

@@ -14,6 +14,7 @@
 % y(6) = array position z, m (ECECF)
 % y(7) = array mass, kg
 % t, array integration time, s
+% J, fragment number
 %
 % Output:
 % N = numero di elementi della soluzione fisica 
@@ -26,9 +27,9 @@
 % Array diameter, m
 %
 % Albino Carbognani
-% Versione del 13 giugno 2023
+% Versione del 9 settembre 2024
 
-function [N, quota_meteoroide, speed, lat, long, height, Dynamic_pressure, residual_mass, diameter]=physical_solution(working_path, Qfin, M0, y, t)
+function [N, quota_meteoroide, speed, lat, long, height, Dynamic_pressure, residual_mass, diameter]=physical_solution(working_path, Qfin, M0, y, t, J)
 
 wgs84 = wgs84Ellipsoid;
 % Polynomial function for the drag coefficient in m^4/kg^2 vs Mach number x (for Mach <= 4).
@@ -169,10 +170,30 @@ for i=1:N
     diameter(i)=2*(3*y(i, 7)/(4*pi*rho_M))^(1/3);
 end
 
+%%%%%%%%%%%%%%%%%%%%%%
+% Save data in files %
+%%%%%%%%%%%%%%%%%%%%%%
+
 fid1 = fopen(strcat(working_path, '/Asteroid_model.txt'),'a+');
-% Salvataggio dei valori del modello nel file di output
+% Salvataggio dei valori del modello nel file di output collettivo
+fprintf(fid1, '%% Fragment starting mass (kg)              %10.3f \n', M0*residual_mass(1));
+fprintf(fid1, '%% Fragment final mass (kg)                 %10.3f \n', M0*residual_mass(N));
 for i=1:N
-     fprintf(fid1,'%10.6f \t  %10.6f\t\t %10.4f  \t\t %10.4f \t\t %10.3f \t\t %10.7f \t\t %10.7f \t\t %10.7f\n', height(i)/1000, speed(i)/1000, lat(i), long(i), Dynamic_pressure(i), residual_mass(i), diameter(i), t(i)); 
+     fprintf(fid1,'%10.6f \t  %10.6f\t\t %10.6f  \t\t %10.6f \t\t %10.6f \t\t %10.10f \t\t %10.7f \t\t %10.7f\n', height(i)/1000, speed(i)/1000, lat(i), long(i), Dynamic_pressure(i), residual_mass(i), diameter(i), t(i)); 
 end
+
+fid2 = fopen(strcat(working_path, 'Asteroid_fragment_n', num2str(J), '.txt'),'a+');
+% Salvataggio dei valori del modello nel file di output singolo
+fprintf(fid2, '%% Final Mass (kg)                        %10.3f \n', M0*residual_mass(N));
+fprintf(fid2, '%% Height (km)     Speed (km/s)       Lat (degrees)     Long (degrees)    Dynamic pressure (MPa)    Relative mass    Diameter (m)   Time (s)\n');
+fprintf(fid2, '    \n');
+for i=1:N
+     fprintf(fid2,'%10.6f \t  %10.6f\t\t %10.6f  \t\t %10.6f \t\t %10.6f \t\t %10.10f \t\t %10.7f \t\t %10.7f\n', height(i)/1000, speed(i)/1000, lat(i), long(i), Dynamic_pressure(i), residual_mass(i), diameter(i), t(i)); 
+end
+
+fid2 = fopen(strcat(working_path, '/Asteroid_strewn_field.txt'),'a+');
+% Salvataggio dello strewn field
+fprintf(fid2,'%10.6f \t\t  %10.6f\t\t %10.6f  \n', lat(N), long(N), M0*residual_mass(N)); 
+
 
 end
