@@ -1,0 +1,61 @@
+$ Settings "Dark flight and strewn field meteoroid"
+$ Fireball's folder results, string
+$ ./Asteroid_2023CX1/Meteo_Expert_atmo_profile_03UTC/Strength_5MPa/
+$
+$ working path of the meteo profile, string
+$ ./Asteroid_2023CX1/Meteo_Expert_atmo_profile_03UTC/
+$
+$ Atmospheric profile file name, string
+$ Atmospheric_profile_Meteo_Expert_03UTC_2023CX1.txt
+$
+$ Meteoroid kinetic energy, Mt
+$ 0.000036878
+$
+$ Mean density meteoroid, kg/m^3 
+$ 3000
+$
+$ Starting speed, m/s    
+$ 14016.4
+$
+$ Trajectory inclination at starting speed, degree
+$ 49.1530
+$
+$ Trajectory azimut at starting speed, degree (from north to east)
+$ 281.3867
+$
+$ Starting height above Earth surface, m 
+$ 100000
+$
+$ Latitude starting point, degree
+$ 49.9190
+$
+$ Longitude starting point, degree
+$ -0.1468
+$
+$ Mean elevation of the ground (estimated) on which the meteoroid falls, m 
+$ 60
+$
+$ Maximum integration time, s 
+$ 650
+$
+$ Asintotic drag coefficient (0.5 for a sphere)
+$ 0.58
+$
+$ Dimensionless spherical form factor (1.21). Hemispherical form factor = 1.919 (Baldwin & Sheaffer, JGR, 76, 1971) 
+$ 1.21 
+$
+$ Meteoroid mean strength (MPa)
+$ 5.0 
+$ 
+$ Fragments final mass (kg)
+$ 1 0.3 0.2 0.1 0.05 0.02 0.005 0.001 
+$
+$ Correction factor for fragment ablation (0.34 for S=1 MPa, 0.45 for S=5 MPa, adimensional)
+$ 0.45
+$
+$ Fireball's name
+$ 2023CX1
+$
+$ Luminous Efficiency
+$ 0.05
+$
